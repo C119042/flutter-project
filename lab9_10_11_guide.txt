@@ -1,0 +1,269 @@
+Chapter 9: Static Route
+
+On Router0:
+
+				enable
+				conf t
+				ip route 192.168.7.0 255.255.255.0 192.168.6.2 
+				ip route 192.168.8.0 255.255.255.0 192.168.6.2
+
+On Router1:
+
+				enable
+				conf t
+				ip route 192.168.5.0 255.255.255.0 192.168.6.1 
+				ip route 192.168.8.0 255.255.255.0 192.168.7.2
+
+On Router2:
+
+				enable
+				conf t
+				ip route 192.168.5.0 255.255.255.0 192.168.7.1 
+				ip route 192.168.6.0 255.255.255.0 192.168.7.1
+
+Verify:
+
+				do sh ip route
+
+NB: You will see C for some networks which means it is a directly connected network while the other 2 will be S which it is static route.
+
+From PC1, go to command prompt and ping PC7:
+
+					ping 192.168.8.10
+
+
+Chapter 9: Default route
+
+I hope you know by now that the default route can be configured on a stub network only and in this scenario you figured out that Router0 and Router2 are stub.
+
+Before we configure default route on Router0 and Router2, we will delete the static routes we added, to do so:
+
+	On Router 0:
+			enable
+			conf t
+			no ip route 192.168.7.0 255.255.255.0 192.168.6.2 
+			no ip route 192.168.8.0 255.255.255.0 192.168.6.2
+
+  On Router2:
+
+			enable
+			conf t
+			no ip route 192.168.5.0 255.255.255.0 192.168.7.1 
+			no ip route 192.168.6.0 255.255.255.0 192.168.7.1
+
+Isk xaqiiji in la tiray routes an ku barnay Router2 static ahaan. Waa inaadan arkin network ay ka horeyso S marka aad run-gareyso command-kan, oo aad aragtaa kaliya 2 networks oo ah kuwa toos ogu xiran Router2.
+		
+					do sh ip route
+
+Hadii aad ku guuleesatay inad tirto hore u soco. 
+
+Default Route configuration:
+
+	On Router 0:
+
+				ip route 0.0.0.0 0.0.0.0 192.168.6.2
+
+  On Router 2:
+				ip route 0.0.0.0 0.0.0.0 192.168.7.1
+
+To verify:
+
+				do sh ip route
+
+you should see S* for default route
+
+From PC1, go to command prompt and ping PC7:
+
+					ping 192.168.8.10
+        
+
+Chapter 11: Switch configuration
+
+VLAN 20:
+
+PCs are already configured with the following:
+	  Network: 192.168.20.0/24
+		Gateway: 192.168.20.1
+		192.168.20.10/24 —> PC2 IP address
+		192.168.20.11/24 —> PC3 IP address
+		192.168.20.12/24 —> PC5 IP address
+
+
+VLAN 30:
+
+PCs are already configured with the following:
+     Network: 192.168.30.0/24
+		Gateway: 192.168.30.1
+		192.168.30.10/24 —> PC4 IP address
+		192.168.30.11/24 —> PC6 IP address
+
+Create VLANs on switch1:
+		vlan 20
+		name sales
+		vlan 30
+		name hr
+		do sh vlan
+
+Create VLANs on switch2:
+		vlan 20
+		name sales
+		vlan 30
+		name hr
+		do sh vlan
+
+Assign your PCs to  VLANs:
+
+On Switch1:
+
+		int f0/2
+		switchport mode access
+		switchport access vlan 20
+		do sh vlan
+
+		int f0/3
+		switchport mode access
+		switchport access vlan 20
+		do sh vlan
+
+		int range f0/4 
+		switchport mode access
+		switchport access vlan 30
+
+                int range f0/6
+		switchport mode access
+		switchport access vlan 30
+
+		int range g0/1 - 2
+		switchport mode trunk
+		exit
+
+To see all vlans creeated on the switch:
+		do sh vlan
+for a specific vlan:
+		do sh vlan id 20
+		do sh vlan name hr
+
+On Switch2:
+
+		int f0/1
+		switchport mode access
+		switchport access vlan 20
+		do sh vlan
+
+		int f0/2
+		switchport mode access
+		switchport access vlan 30
+
+		int range g0/2
+		switchport mode trunk
+		exit
+
+		do sh vlan
+
+Test that computers in the same can reach each other but not computers in different VLANs. So there is no inter-vlan communication. 
+
+From PC2, ping PC3(Same VLAN):
+		ping 192.168.20.11
+
+
+From PC4, ping pc6(Same VLAN):
+		ping 192.168.30.11
+
+from PC4, ping PC2(Different VLAN, this must fail, Packet loss will be 100%):
+
+		ping 192.168.20.10
+
+In order PC4 in VLAN30 to ping PC2 in VLAN20, we will configure Router on a Stick(ROAS) next:
+Inter-VLAN Communication
+On Switch 1: 
+    enable
+		conf t
+		int vlan 1
+		no shut
+		ip address 192.168.5.5 255.255.255.0
+		ip default-gateway 192.168.5.1
+
+		ip routing
+		int vlan 20
+		ip address 192.168.20.5 255.255.255.0
+		int vlan 30
+		ip address 192.168.30.5 255.255.255.0
+
+On Router 0:
+
+			int g0/0/1.20
+			encapsulation dot1q 20
+			ip address 192.168.20.1 255.255.255.0
+			
+			int g0/0/1.30
+			encapsulation dot1q 30
+			ip address 192.168.30.1 255.255.255.0
+
+			
+Now test that PCs from two VLANs can reach each other.
+from PC4, ping PC2:
+		ping 192.168.20.10
+
+If all is well, you should ping successfully with no packet loss.
+
+Chapter10: Port Security
+
+
+Go to switch3 
+		enable
+		conf t
+	  int f0/5
+		switchport mode access
+		switchport port-security 
+
+Check if port security is enabled on that interface:
+
+		 do sh port-security int f0/5
+
+
+		do sh mac address-table
+the default configuration for port-security is:
+		maximum mac address allowed is only 1 and violation is shutdown. So, if more than one IP is learned from f0/5 
+which is connected to hub with 3 PCs connected.
+
+Adoo jooga PC10 waxaad isku daydaa inad ping-gareeso PC7, 8 iyo 9. marka aad intas sameso waxaad ku xadgudbi sharciga ahaa kaliya ugu badnaan 
+hal mac address aya laga baran karaa interface f0/5. Sidaas darteedna sharciga wa in la demiya interface marka violation uu dhaco:
+
+		ping 192.168.8.10
+and then
+    ping 192.168.8.10
+    ping 192.168.8.10
+
+Hada fiiri link-ga u dhaxeeyo Switch3 iyo Hub-ka, waa inuu demaa hadii aad si sax u sameesay port-security. Si aad u so shido link-gas mar kale intaan samee:
+
+Adoo jooga Global Configuration Mode, marka hore demi interface-ka kadibna dib u so shid. kaliya hadii isku daydo inad so shido 
+adoo markale aan demin kuuma shaqeyn doono:
+
+				int f0/5
+		    shut
+		    no shut
+
+Si aad sharciga wax ooga bedeshid, tusaale aad u ogolaato 2 mac addresses, marka violation dhacana aan loo demin link-ga lkn traffic la drop-gareeyo, sidan samee:
+
+		switchport port-security maximum 2
+		switchport port-security violation protect
+
+Si aad mac address-ka ugu 
+		switchport port-security mac-address sticky
+
+Si aad u aragto Port-security configurations ku sameesan:
+
+Hadaad joogto privilege mode, ama ka hor mari do:
+		sh port-security 
+
+Si aad u aragto port-security aad ku sameesay interface gaar ah:
+
+		sh port-security int f0/5
+
+
+		
+
+
+
+
+
